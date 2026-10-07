@@ -1,18 +1,12 @@
 # Runs on a SELF-HOSTED agent (your PC, pool "Default") because it deploys ShopBot into the local Docker.
 #   every push to main : deploy -> wait for healthy -> smoke tests -> publish results
-#   nightly 02:00 UTC  : the same + the full evaluation suite (judge LLM, slow, rate-limited)
+# There is NO schedule: the full evaluation suite (step 4) uses many judge LLM calls, so it does not run
+# automatically. To run it nightly again, add a `schedules:` block with a cron here.
 # Needs one secret pipeline variable: ANTHROPIC_API_KEY (Pipelines > Edit > Variables > keep this value secret).
 
 trigger:
   branches:
     include: [main]
-
-schedules:
-  - cron: "0 2 * * *"
-    displayName: Nightly full evaluation
-    branches:
-      include: [main]
-    always: true # run even when nothing changed: the judge model or ShopBot may have
 
 pool:
   name: Default
@@ -57,7 +51,8 @@ steps:
     env:
       ANTHROPIC_API_KEY: $(ANTHROPIC_API_KEY)
 
-  # Nightly only. -m evaluation: judge-based tests; -m agentic: agent tools; -m performance: latency and load.
+  # Scheduled runs only, and no schedule is configured now (see the top of this file), so this step is skipped.
+  # -m evaluation: judge-based tests; -m agentic: agent tools; -m performance: latency and load.
   # Plain pytest reports test_step_efficiency as skipped, so it gets its own command (see README).
   - powershell: |
       .\.venv\Scripts\python -m pytest -m "evaluation or agentic or performance"
