@@ -10,11 +10,6 @@ __pycache__/
 # DeepEval local cache and results
 .deepeval*
 
-# Node / Playwright
-node_modules/
-ui_tests/test-results/
-ui_tests/playwright-report/
-
 # Generated reports
 reports/
 allure-results/
