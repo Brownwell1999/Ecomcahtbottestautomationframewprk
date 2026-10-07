@@ -74,6 +74,10 @@ Exit code: `0` = every pass rate is at or above its minimum, `1` = the gate fail
 Settings are in the `online` section of `thresholds.yaml` (sample size, look-back window, minimum pass rates).
 Each sampled turn costs judge calls (up to 5 metrics), so keep `sample_size` small.
 
+Agent-mode turns (`shopbot-agent` traces) are sampled too (`online.agent_sample_size`) and judged with Task
+Completion. Their tool calls are read from the steps inside the trace, so this works in production, where
+the dev-only `debug` field that the pytest tests read (`debug.toolCalls`, `debug.retrievalContext`) is off.
+
 ShopBot does not need to be running: the job needs only `LANGSMITH_API_KEY` and `ANTHROPIC_API_KEY` in `.env`.
 LangSmith is only the source of traces and the place for dashboards and alerts; all scoring is DeepEval.
 

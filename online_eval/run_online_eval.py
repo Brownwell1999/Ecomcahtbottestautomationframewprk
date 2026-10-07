@@ -10,7 +10,8 @@ Flow:  LangSmith traces of real turns -> take a random sample -> build DeepEval 
 
 Real traffic has no golden answer, so only metrics that need just the question, the reply and the
 retrieved chunks are used: Answer Relevancy, Toxicity, PII Leakage, and for turns that retrieved chunks
-also Faithfulness and Contextual Relevancy.
+also Faithfulness and Contextual Relevancy. Agent-mode turns are judged with Task Completion, using the
+tool calls recorded in the trace (in production there is no debug field to read them from).
 
 This is a plain script, not a pytest test. ShopBot does NOT need to be running: the job only needs
 LangSmith (the traces) and the judge LLM.
@@ -24,9 +25,10 @@ import random
 import sys
 from datetime import datetime, timezone
 
-from deepeval.test_case import LLMTestCase
+from deepeval.test_case import LLMTestCase, ToolCall
 
-from framework.clients.langsmith_client import recent_turns, save_score
+from framework.clients.langsmith_client import recent_agent_turns, recent_turns, save_score
+from framework.metrics.agentic_metrics import task_completion_metric
 from framework.metrics.chatbot_metrics import answer_relevancy_metric
 from framework.metrics.rag_metrics import contextual_relevancy_metric, faithfulness_metric
 from framework.metrics.security_metrics import pii_leakage_metric, toxicity_metric
@@ -37,7 +39,10 @@ REPORT_FILE = PROJECT_ROOT / "reports" / "online_eval.json"
 
 
 def metrics_for(turn):
-    """The metrics that can judge this turn. The two RAG metrics need retrieved chunks."""
+    """The metrics that can judge this turn. The two RAG metrics need retrieved chunks.
+    An agent-mode turn (it has "tool_calls") is judged on whether the agent completed the task."""
+    if "tool_calls" in turn:
+        return {"task_completion": task_completion_metric()}
     metrics = {
         "answer_relevancy": answer_relevancy_metric(),
         "toxicity": toxicity_metric(),
@@ -56,8 +61,14 @@ def score_turn(turn):
         return [{"run_id": turn["run_id"], "question": turn["question"], "answer": turn["answer"],
                  "metric": "answer_relevancy", "score": 0.0, "passed": False, "reason": "ShopBot returned an empty reply", "error": None}]
 
-    test_case = LLMTestCase(input=turn["question"], actual_output=turn["answer"],
-                            retrieval_context=turn["retrieval_context"] or None)
+    if "tool_calls" in turn:
+        # Agent turn: the judge also sees the tools the agent called, read from the trace
+        tools = [ToolCall(name=call["name"], input_parameters=call["args"], output=call["output"])
+                 for call in turn["tool_calls"]]
+        test_case = LLMTestCase(input=turn["question"], actual_output=turn["answer"], tools_called=tools)
+    else:
+        test_case = LLMTestCase(input=turn["question"], actual_output=turn["answer"],
+                                retrieval_context=turn["retrieval_context"] or None)
     results = []
     for name, metric in metrics_for(turn).items():
         result = {"run_id": turn["run_id"], "question": turn["question"], "answer": turn["answer"],
@@ -104,18 +115,22 @@ def main():
         print("Set LANGSMITH_API_KEY and ANTHROPIC_API_KEY in .env to run the online evaluation.")
         return 2
 
-    # 1. Read the recent real turns and take a random sample
-    turns = recent_turns(hours=SETTINGS["lookback_hours"])
-    if not turns:
+    # 1. Read the recent real turns (normal and agent-mode) and take a random sample of each
+    turns = recent_turns(hours=SETTINGS["lookback_hours"]) if SETTINGS["sample_size"] else []
+    agent_turns = recent_agent_turns(hours=SETTINGS["lookback_hours"]) if SETTINGS["agent_sample_size"] else []
+    if not turns and not agent_turns:
         print(f"No ShopBot turns found in the last {SETTINGS['lookback_hours']} hours: nothing to score.")
         return 0
-    sample = random.sample(turns, min(SETTINGS["sample_size"], len(turns)))
-    print(f"Found {len(turns)} recent turns, scoring a sample of {len(sample)}.")
+    sample = (random.sample(turns, min(SETTINGS["sample_size"], len(turns)))
+              + random.sample(agent_turns, min(SETTINGS["agent_sample_size"], len(agent_turns))))
+    print(f"Found {len(turns)} normal turns and {len(agent_turns)} agent turns, scoring a sample of {len(sample)}.")
 
     # 2. Score every sampled turn, and write each score back onto its trace in LangSmith
     results = []
     for number, turn in enumerate(sample, start=1):
         print(f"\nTurn {number}: {turn['question']}")
+        if "tool_calls" in turn:
+            print(f"  (agent turn, tools called: {[call['name'] for call in turn['tool_calls']]})")
         for result in score_turn(turn):
             results.append(result)
             if result["error"] is not None:
@@ -137,7 +152,7 @@ def main():
     # 4. Save the report
     REPORT_FILE.parent.mkdir(exist_ok=True)
     report = {"run_at": datetime.now(timezone.utc).isoformat(), "turns_found": len(turns),
-              "turns_scored": len(sample), "pass_rates": rates, "gate_failures": failures, "results": results}
+              "agent_turns_found": len(agent_turns), "turns_scored": len(sample), "pass_rates": rates, "gate_failures": failures, "results": results}
     REPORT_FILE.write_text(json.dumps(report, indent=2), encoding="utf-8")
     print(f"\nReport saved to {REPORT_FILE}")
 

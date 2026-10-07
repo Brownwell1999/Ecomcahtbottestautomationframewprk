@@ -41,6 +41,37 @@ def recent_turns(hours=24, limit=100):
     return turns
 
 
+def recent_agent_turns(hours=24, limit=50):
+    """Return ShopBot's most recent AGENT-mode turns (traces named "shopbot-agent"), newest first.
+    Each turn is a plain dict: {"run_id", "question", "answer", "tool_calls"}, where tool_calls is the
+    list of tools the agent called, in order: {"name", "args", "output"}.
+    In production this replaces the dev-only debug.toolCalls field."""
+    client = Client(api_key=LANGSMITH_API_KEY)
+    runs = client.list_runs(
+        project_name=LANGSMITH_PROJECT,
+        is_root=True,
+        filter='eq(name, "shopbot-agent")',
+        start_time=datetime.now(timezone.utc) - timedelta(hours=hours),
+        limit=limit,
+    )
+
+    turns = []
+    for run in runs:
+        inputs = run.inputs or {}
+        outputs = run.outputs or {}
+        if run.error or "message" not in inputs or "reply" not in outputs:
+            continue  # the turn crashed or is still running: nothing to score
+
+        # The tool calls are steps INSIDE the trace: every step of this trace whose type is "tool"
+        steps = client.list_runs(project_name=LANGSMITH_PROJECT, trace_id=run.trace_id, run_type="tool")
+        tool_calls = [{"name": step.name, "args": step.inputs or {},
+                       "output": (step.outputs or {}).get("output", step.outputs)}
+                      for step in sorted(steps, key=lambda step: step.start_time)]
+        turns.append({"run_id": str(run.id), "question": inputs["message"], "answer": outputs["reply"],
+                      "tool_calls": tool_calls})
+    return turns
+
+
 def save_score(run_id, metric_name, score, reason):
     """Write one metric score onto a trace as LangSmith feedback, so it shows next to the trace
     and LangSmith's dashboards and alerts can use it."""
