@@ -8,7 +8,7 @@ Flow:  question -> answer 1 -> same question again -> answer 2
        -> judge compares the facts of answer 2 with answer 1 -> PASS / FAIL
 
 Run:  pytest tests/LLM/test_Consistency.py -v -s
-Needs: ShopBot running locally (http://localhost:5173) and JUDGE_API_KEY in .env (judge LLM).
+Needs: ShopBot running locally (http://localhost:5173) and ANTHROPIC_API_KEY in .env (judge LLM).
 """
 
 import pytest

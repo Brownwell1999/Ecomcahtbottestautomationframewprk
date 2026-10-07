@@ -6,7 +6,7 @@ DeepEval has no built-in Correctness metric, so we build one with GEval.
 Flow:  question -> ShopBot answer -> compare with expected answer (judge LLM) -> PASS / FAIL
 
 Run:  pytest tests/LLM/test_Correctness.py -v -s
-Needs: ShopBot running locally (http://localhost:5173) and JUDGE_API_KEY in .env (judge LLM).
+Needs: ShopBot running locally (http://localhost:5173) and ANTHROPIC_API_KEY in .env (judge LLM).
 """
 
 import pytest

@@ -10,7 +10,7 @@ Flow:  pytest -> warranty questions in ONE conversation -> last reply can't help
        -> ConversationalTestCase(turns) -> Conversation Completeness -> FAIL (score < threshold)
 
 Run:  pytest tests/CHATBOT/NEGATIVE/test_Conversation_Completeness_Negative.py -v -s
-Needs: ShopBot running locally (http://localhost:5173) and JUDGE_API_KEY in .env (judge LLM).
+Needs: ShopBot running locally (http://localhost:5173) and ANTHROPIC_API_KEY in .env (judge LLM).
 """
 
 import pytest

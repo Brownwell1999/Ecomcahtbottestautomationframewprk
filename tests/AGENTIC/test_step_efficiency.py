@@ -12,7 +12,7 @@ Flow:  task -> ShopBot (agent mode) -> copy every tool call into the trace
 
 Run:  deepeval test run tests/AGENTIC/test_step_efficiency.py -d all
       (NOT plain pytest: the trace only exists under `deepeval test run`; under pytest this test is skipped)
-Needs: ShopBot running locally (http://localhost:5173) and JUDGE_API_KEY in .env (judge LLM).
+Needs: ShopBot running locally (http://localhost:5173) and ANTHROPIC_API_KEY in .env (judge LLM).
 """
 
 import pytest

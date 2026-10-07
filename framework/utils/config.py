@@ -26,12 +26,15 @@ def load_test_data(name):
 
 GRAPHQL_URL = os.getenv("CHATBOT_GRAPHQL_URL", "http://localhost:5173/graphql")
 
-# Judge LLM used by the DeepEval metrics: any provider with an OpenAI-compatible API (Gemini, Groq, ...).
-# A different model family AND provider than ShopBot's own (openai/gpt-oss-20b on Groq), so the bot
-# doesn't grade itself and eval runs don't use up ShopBot's rate limit.
-JUDGE_API_KEY = os.getenv("JUDGE_API_KEY")
-JUDGE_BASE_URL = os.getenv("JUDGE_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai/")
-JUDGE_MODEL = os.getenv("JUDGE_MODEL", "gemini-3.8-flash")
+# Judge LLM used by the DeepEval metrics: Claude (Anthropic). A different model family and provider than
+# ShopBot's own (openai/gpt-oss-20b on Groq), so the bot doesn't grade itself and eval runs don't use up ShopBot's quota.
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+JUDGE_MODEL = os.getenv("JUDGE_MODEL", "claude-sonnet-5-5")
+
+# LangSmith: where ShopBot records every conversation turn as a trace. The online evaluation job
+# (online_eval/) reads traces from this project and writes its scores back onto them.
+LANGSMITH_API_KEY = os.getenv("LANGSMITH_API_KEY")
+LANGSMITH_PROJECT = os.getenv("LANGSMITH_PROJECT", "shopbot-dev")
 
 
 r"""

@@ -9,7 +9,7 @@ Flow:  policy question -> ShopBot answer + the chunks it retrieved -> LLMTestCas
 
 Run:  pytest tests/PROMPT/test_Faithfulness.py -v -s
 Needs: ShopBot running locally (http://localhost:5173, debug block is only returned in dev)
-       and JUDGE_API_KEY in .env (judge LLM).
+       and ANTHROPIC_API_KEY in .env (judge LLM).
 """
 
 import pytest

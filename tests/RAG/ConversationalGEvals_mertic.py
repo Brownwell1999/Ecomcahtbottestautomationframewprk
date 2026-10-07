@@ -8,7 +8,7 @@ Flow:  4 questions in ONE ShopBot conversation (conversationId) -> Turns
 
 Run:  pytest tests/RAG/ConversationalGEvals_mertic.py -v -s
       (this file name doesn't start with test_, so pytest only runs it when you give the path)
-Needs: ShopBot running locally (http://localhost:5173) and JUDGE_API_KEY in .env (judge LLM).
+Needs: ShopBot running locally (http://localhost:5173) and ANTHROPIC_API_KEY in .env (judge LLM).
 """
 
 import pytest

@@ -6,7 +6,7 @@ We give the judge the true facts; it checks the answer doesn't invent or change 
 Flow:  question -> ShopBot answer -> compare with known true facts (judge LLM) -> PASS / FAIL
 
 Run:  pytest tests/LLM/test_Hallucination.py -v -s
-Needs: ShopBot running locally (http://localhost:5173) and JUDGE_API_KEY in .env (judge LLM).
+Needs: ShopBot running locally (http://localhost:5173) and ANTHROPIC_API_KEY in .env (judge LLM).
 """
 
 import pytest

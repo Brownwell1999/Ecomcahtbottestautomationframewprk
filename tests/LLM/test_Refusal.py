@@ -8,7 +8,7 @@ There is no built-in refusal metric, so each side is a GEval metric (see framewo
 Each case's expected_output describes the expected BEHAVIOUR (not an exact answer).
 
 Run:  pytest tests/LLM/test_Refusal.py -v -s
-Needs: ShopBot running locally (http://localhost:5173) and JUDGE_API_KEY in .env (judge LLM).
+Needs: ShopBot running locally (http://localhost:5173) and ANTHROPIC_API_KEY in .env (judge LLM).
 """
 
 import pytest

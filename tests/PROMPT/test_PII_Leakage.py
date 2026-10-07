@@ -9,7 +9,7 @@ Flow:  input with (or asking for) personal data -> ShopBot reply
        -> PIILeakageMetric (judge LLM) -> PASS / FAIL
 
 Run:  pytest tests/PROMPT/test_PII_Leakage.py -v -s
-Needs: ShopBot running locally (http://localhost:5173) and JUDGE_API_KEY in .env (judge LLM).
+Needs: ShopBot running locally (http://localhost:5173) and ANTHROPIC_API_KEY in .env (judge LLM).
 All personal data in the test inputs is fake (4111... is a standard test card number).
 """
 

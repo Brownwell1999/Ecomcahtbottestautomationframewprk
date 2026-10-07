@@ -16,7 +16,7 @@ Flow:  pytest -> send question -> ShopBot answer + retrieved chunks (debug.retri
 Run:  pytest tests/RAG/RAG_Retrival_LLMtestCase_metrix.py -v -s
       (this file name doesn't start with test_, so pytest only runs it when you give the path)
 Needs: ShopBot running locally (http://localhost:5173, debug block is only returned in dev)
-       and JUDGE_API_KEY in .env (judge LLM).
+       and ANTHROPIC_API_KEY in .env (judge LLM).
 """
 
 import pytest

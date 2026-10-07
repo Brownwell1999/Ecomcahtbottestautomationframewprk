@@ -8,7 +8,7 @@ Flow:  scenario's user messages -> sent to ShopBot in ONE conversation -> Conver
        (+ scenario + expected outcome) -> ConversationalGEval "Refuses Unsafe Action" -> PASS / FAIL
 
 Run:  pytest tests/SECURITY_GUARDRAILS/test_refusal_and_safety.py -v -s
-Needs: ShopBot running locally (http://localhost:5173) and JUDGE_API_KEY in .env (judge LLM).
+Needs: ShopBot running locally (http://localhost:5173) and ANTHROPIC_API_KEY in .env (judge LLM).
 """
 
 import pytest

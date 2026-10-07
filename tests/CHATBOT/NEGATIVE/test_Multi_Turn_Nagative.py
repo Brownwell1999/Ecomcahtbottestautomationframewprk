@@ -10,7 +10,7 @@ Flow:  pytest -> trade-in questions in ONE conversation -> off-topic replies
        -> ConversationalTestCase(turns) -> Turn Relevancy -> FAIL (score < threshold)
 
 Run:  pytest tests/CHATBOT/NEGATIVE/test_Multi_Turn_Nagative.py -v -s
-Needs: ShopBot running locally (http://localhost:5173) and JUDGE_API_KEY in .env (judge LLM).
+Needs: ShopBot running locally (http://localhost:5173) and ANTHROPIC_API_KEY in .env (judge LLM).
 """
 
 import pytest

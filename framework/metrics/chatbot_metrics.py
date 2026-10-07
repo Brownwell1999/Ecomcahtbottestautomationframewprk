@@ -7,18 +7,18 @@ from deepeval.metrics import (
     KnowledgeRetentionMetric,
     TurnRelevancyMetric,
 )
-from deepeval.models import LocalModel
+from deepeval.models import AnthropicModel
 
-from framework.utils.config import JUDGE_API_KEY, JUDGE_BASE_URL, JUDGE_MODEL, THRESHOLDS
+from framework.utils.config import ANTHROPIC_API_KEY, JUDGE_MODEL, THRESHOLDS
 
 
 def judge_llm():
-    """The LLM that scores ShopBot's answers, through DeepEval's OpenAI-compatible model.
-    Which LLM it is comes from .env (JUDGE_MODEL, JUDGE_BASE_URL, JUDGE_API_KEY)."""
-    if not JUDGE_API_KEY:
-        pytest.skip("Set JUDGE_API_KEY in .env to run DeepEval tests")
-    # temperature=0: the judge gives the same score for the same answer, run after run
-    return LocalModel(model=JUDGE_MODEL, api_key=JUDGE_API_KEY, base_url=JUDGE_BASE_URL, temperature=0)
+    """The LLM that scores ShopBot's answers, (Claude, through DeepEval's AnthropicModel).
+    Which Claude model it is comes from .env (JUDGE_MODEL); the key is ANTHROPIC_API_KEY."""
+    if not ANTHROPIC_API_KEY:
+        pytest.skip("Set ANTHROPIC_API_KEY in .env to run DeepEval tests")
+    # No temperature argument: the Anthropic API rejects it for this model, so the judge uses the model's own setting
+    return AnthropicModel(model=JUDGE_MODEL, api_key=ANTHROPIC_API_KEY)
 
 
 def knowledge_retention_metric(threshold=THRESHOLDS["metrics"]["knowledge_retention"]):

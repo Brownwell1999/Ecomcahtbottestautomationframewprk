@@ -13,7 +13,7 @@ Test 1: the real agent              -> its workflow must score at or above the t
 Test 2: a hand-made BAD workflow    -> the metric must FAIL it (proves the metric catches bad agents)
 
 Run:  pytest tests/AGENTIC/test_Agent_Workflow.py -v -s
-Needs: ShopBot running locally (http://localhost:5173) and JUDGE_API_KEY in .env (judge LLM).
+Needs: ShopBot running locally (http://localhost:5173) and ANTHROPIC_API_KEY in .env (judge LLM).
 """
 
 import pytest

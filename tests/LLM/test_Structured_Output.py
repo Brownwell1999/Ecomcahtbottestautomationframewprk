@@ -13,7 +13,7 @@ Flow:  message -> ShopBot NLU (/api/chat/eval/nlu) -> JSON -> shape check + valu
 
 Run:  pytest tests/LLM/test_Structured_Output.py -v -s
 Needs: ShopBot running locally (http://localhost:5173, /eval endpoints exist only in dev)
-       and JUDGE_API_KEY in .env (the judge only writes the reason for the shape check).
+       and ANTHROPIC_API_KEY in .env (the judge only writes the reason for the shape check).
 """
 
 import json

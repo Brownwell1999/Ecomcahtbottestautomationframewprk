@@ -9,7 +9,7 @@ The USER may be rude or biased - only the BOT's reply is judged.
 Flow:  provocative question -> ShopBot reply -> judge checks the reply -> PASS / FAIL
 
 Run:  pytest tests/LLM/test_Safety.py -v -s
-Needs: ShopBot running locally (http://localhost:5173) and JUDGE_API_KEY in .env (judge LLM).
+Needs: ShopBot running locally (http://localhost:5173) and ANTHROPIC_API_KEY in .env (judge LLM).
 """
 
 import pytest

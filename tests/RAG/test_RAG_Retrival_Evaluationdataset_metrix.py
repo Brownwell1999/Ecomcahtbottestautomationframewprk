@@ -9,7 +9,7 @@ Flow:  EvaluationDataset(goldens) -> pytest runs one test per golden
 
 Run:  pytest tests/RAG/test_RAG_Retrival_Evaluationdataset_metrix.py -v -s
 Needs: ShopBot running locally (http://localhost:5173, debug block is only returned in dev)
-       and JUDGE_API_KEY in .env (judge LLM).
+       and ANTHROPIC_API_KEY in .env (judge LLM).
 """
 
 import pytest

@@ -8,7 +8,7 @@ Flow:  pytest -> send question 1 -> get conversationId + response
        -> ConversationalTestCase(turns) -> Turn Relevancy -> PASS / FAIL
 
 Run:  pytest tests/CHATBOT/test_multi_turn.py -v -s
-Needs: ShopBot running locally (http://localhost:5173) and JUDGE_API_KEY in .env (judge LLM).
+Needs: ShopBot running locally (http://localhost:5173) and ANTHROPIC_API_KEY in .env (judge LLM).
 """
 
 import pytest

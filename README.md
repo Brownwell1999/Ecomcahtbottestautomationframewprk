@@ -5,7 +5,7 @@ Test automation framework for ShopBot (pytest + DeepEval).
 ## Running the tests
 
 ShopBot must be running locally (`docker compose up -d` in the ShopBot repo), and `.env` must contain
-`JUDGE_API_KEY` (copy `.env.example` to `.env`).
+`ANTHROPIC_API_KEY` (copy `.env.example` to `.env`).
 
 The suite needs **two commands**, because one kind of metric reads a trace that only exists under
 `deepeval test run`:
@@ -48,3 +48,31 @@ Every pass mark is in one file, `thresholds.yaml`, at the project root:
 
 To tune a gate, change the number in `thresholds.yaml`; no test or framework code needs editing.
 A single test can still override it: `answer_relevancy_metric(threshold=0.9)`.
+
+## Online evaluation (scoring real conversations)
+
+The tests in `tests/` are **offline** evaluation: we send our own questions before a release.
+`online_eval/` is **online** evaluation: it scores conversations that already happened.
+
+```bash
+python -m online_eval.run_online_eval
+```
+
+What it does:
+
+1. Reads ShopBot's recent conversation turns from LangSmith (the `shopbot-turn` traces).
+2. Takes a random sample and scores each turn with the **same metric functions the tests use**.
+   Real traffic has no golden answer, so only these are used: Answer Relevancy, Toxicity, PII Leakage,
+   and for turns that retrieved chunks also Faithfulness and Contextual Relevancy.
+3. Writes each score back onto its trace in LangSmith (feedback keys `deepeval_<metric>`), so LangSmith's
+   dashboards and alerts can use them.
+4. Saves `reports/online_eval.json` and compares each metric's pass rate with the gate.
+
+Exit code: `0` = every pass rate is at or above its minimum, `1` = the gate failed (the alert),
+`2` = a key is missing. Run it on a schedule and a failing run is the notification.
+
+Settings are in the `online` section of `thresholds.yaml` (sample size, look-back window, minimum pass rates).
+Each sampled turn costs judge calls (up to 5 metrics), so keep `sample_size` small.
+
+ShopBot does not need to be running: the job needs only `LANGSMITH_API_KEY` and `ANTHROPIC_API_KEY` in `.env`.
+LangSmith is only the source of traces and the place for dashboards and alerts; all scoring is DeepEval.

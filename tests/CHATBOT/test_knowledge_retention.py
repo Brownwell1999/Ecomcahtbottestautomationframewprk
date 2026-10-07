@@ -7,7 +7,7 @@ Flow:  pytest -> user gives a fact (name) -> other question -> ask about the fac
        -> ConversationalTestCase(turns) -> Knowledge Retention -> PASS / FAIL
 
 Run:  pytest tests/CHATBOT/test_knowledge_retention.py -v -s
-Needs: ShopBot running locally (http://localhost:5173) and JUDGE_API_KEY in .env (judge LLM).
+Needs: ShopBot running locally (http://localhost:5173) and ANTHROPIC_API_KEY in .env (judge LLM).
 """
 
 import pytest

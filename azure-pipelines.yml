@@ -1,0 +1,85 @@
+# Runs on a SELF-HOSTED agent (your PC, pool "Default") because it deploys ShopBot into the local Docker.
+#   every push to main : deploy -> wait for healthy -> smoke tests -> publish results
+#   nightly 02:00 UTC  : the same + the full evaluation suite (judge LLM, slow, rate-limited)
+# Needs one secret pipeline variable: ANTHROPIC_API_KEY (Pipelines > Edit > Variables > keep this value secret).
+
+trigger:
+  branches:
+    include: [main]
+
+schedules:
+  - cron: "0 2 * * *"
+    displayName: Nightly full evaluation
+    branches:
+      include: [main]
+    always: true # run even when nothing changed: the judge model or ShopBot may have
+
+pool:
+  name: Default
+
+variables:
+  SHOPBOT_DIR: C:\Ecomchatboat # ShopBot's own repo, already on this PC
+  CHATBOT_GRAPHQL_URL: http://localhost:5173/graphql
+  DEEPEVAL_TELEMETRY_OPT_OUT: "YES"
+  DEEPEVAL_RETRY_MAX_ATTEMPTS: "6"
+  DEEPEVAL_RETRY_CAP_SECONDS: "30"
+  JUDGE_MODEL: claude-sonnet-5-5
+
+steps:
+  - powershell: |
+      # No --wait: the one-shot ollama-pull container exits by design, and --wait counts that as a failure
+      docker compose up -d --build
+      if ($LASTEXITCODE -ne 0) { exit 1 }
+    displayName: 1. Deploy ShopBot in Docker
+    workingDirectory: $(SHOPBOT_DIR)
+
+  - powershell: |
+      $deadline = (Get-Date).AddMinutes(5)
+      while ((Get-Date) -lt $deadline) {
+        try {
+          $r = Invoke-RestMethod -Uri $env:CHATBOT_GRAPHQL_URL -Method Post -ContentType "application/json" `
+                 -Body '{"query":"{__typename}"}' -TimeoutSec 10
+          if ($r.data.__typename) { Write-Host "ShopBot is up"; exit 0 }
+        } catch { }
+        Start-Sleep -Seconds 5
+      }
+      Write-Error "ShopBot did not answer within 5 minutes"
+      exit 1
+    displayName: 2. Wait until ShopBot answers
+
+  - powershell: |
+      python -m venv .venv
+      .\.venv\Scripts\python -m pip install -q -r requirements.txt
+    displayName: Install test framework
+
+  - powershell: .\.venv\Scripts\python -m pytest -m smoke
+    displayName: 3. Smoke tests
+    env:
+      ANTHROPIC_API_KEY: $(ANTHROPIC_API_KEY)
+
+  # Nightly only. -m evaluation: judge-based tests; -m agentic: agent tools; -m performance: latency and load.
+  # Plain pytest reports test_step_efficiency as skipped, so it gets its own command (see README).
+  - powershell: |
+      .\.venv\Scripts\python -m pytest -m "evaluation or agentic or performance"
+      $pytestExit = $LASTEXITCODE
+      .\.venv\Scripts\deepeval test run tests/AGENTIC/test_step_efficiency.py -d all
+      if ($pytestExit -ne 0 -or $LASTEXITCODE -ne 0) { exit 1 }
+    displayName: 4. Full evaluation suite (nightly)
+    condition: and(succeeded(), eq(variables['Build.Reason'], 'Schedule'))
+    env:
+      ANTHROPIC_API_KEY: $(ANTHROPIC_API_KEY)
+
+  - task: PublishTestResults@2
+    displayName: 5. Publish test results
+    condition: always()
+    inputs:
+      testResultsFormat: JUnit
+      testResultsFiles: reports/junit.xml
+      testRunTitle: ShopBot evaluation ($(Build.Reason))
+
+  - task: PublishBuildArtifacts@1
+    displayName: Publish HTML report
+    condition: always()
+    inputs:
+      PathtoPublish: reports/report.html
+      ArtifactName: report

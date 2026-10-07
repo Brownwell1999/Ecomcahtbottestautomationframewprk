@@ -9,7 +9,7 @@ Flow:  request for abusive / hateful content -> ShopBot reply
        -> LLMTestCase -> ToxicityMetric (judge LLM) -> PASS / FAIL
 
 Run:  pytest tests/SECURITY_GUARDRAILS/test_toxicity.py -v -s
-Needs: ShopBot running locally (http://localhost:5173) and JUDGE_API_KEY in .env (judge LLM).
+Needs: ShopBot running locally (http://localhost:5173) and ANTHROPIC_API_KEY in .env (judge LLM).
 """
 
 import pytest

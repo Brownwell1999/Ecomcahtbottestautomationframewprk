@@ -10,7 +10,7 @@ Flow:  questions in ONE conversation -> each reply + its retrieved chunks -> Tur
 Run:  pytest tests/Multi_Turn/Retrival.py -v -s
       (this file name doesn't start with test_, so pytest only runs it when you give the path)
 Needs: ShopBot running locally (http://localhost:5173, debug block is only returned in dev)
-       and JUDGE_API_KEY in .env (judge LLM).
+       and ANTHROPIC_API_KEY in .env (judge LLM).
 """
 
 import pytest

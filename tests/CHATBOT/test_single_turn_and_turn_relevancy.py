@@ -7,7 +7,7 @@ Flow:  pytest -> send question -> Chatbot API -> actual response
        -> LLMTestCase -> Answer Relevancy -> PASS / FAIL
 
 Run:  pytest tests/CHATBOT/test_single_turn_and_turn_relevancy.py -v -s
-Needs: ShopBot running locally (http://localhost:5173) and JUDGE_API_KEY in .env (judge LLM).
+Needs: ShopBot running locally (http://localhost:5173) and ANTHROPIC_API_KEY in .env (judge LLM).
 """
 
 import pytest

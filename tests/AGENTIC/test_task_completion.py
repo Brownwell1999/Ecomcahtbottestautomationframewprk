@@ -8,7 +8,7 @@ Flow:  task -> ShopBot (agent mode) -> tools called + final answer
        -> LLMTestCase -> TaskCompletionMetric (judge LLM) -> PASS / FAIL
 
 Run:  pytest tests/AGENTIC/test_task_completion.py -v -s
-Needs: ShopBot running locally (http://localhost:5173) and JUDGE_API_KEY in .env (judge LLM).
+Needs: ShopBot running locally (http://localhost:5173) and ANTHROPIC_API_KEY in .env (judge LLM).
 """
 
 import pytest

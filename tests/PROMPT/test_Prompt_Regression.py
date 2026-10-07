@@ -11,7 +11,7 @@ Flow:  golden question -> ShopBot answer (+ the prompt version that wrote it)
 Run:  pytest tests/PROMPT/test_Prompt_Regression.py -v -s
       (run it before and after editing C:\\Ecomchatboat\\services\\chat_service\\app\\prompts.py)
 Needs: ShopBot running locally (http://localhost:5173, debug block is only returned in dev)
-       and JUDGE_API_KEY in .env (judge LLM).
+       and ANTHROPIC_API_KEY in .env (judge LLM).
 """
 
 import pytest
