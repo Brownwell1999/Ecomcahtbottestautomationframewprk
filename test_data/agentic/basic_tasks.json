@@ -1,0 +1,4 @@
+[
+  {"question": "Find wireless earbuds under $150", "expected_tools": ["search_products"]},
+  {"question": "Show me the full details of the Sonix Pro Wireless Earbuds", "expected_tools": ["search_products", "get_products"]}
+]

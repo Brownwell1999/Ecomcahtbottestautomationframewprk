@@ -1,0 +1,6 @@
+[
+  {"message": "Show me running shoes under $100", "expected_intent": "product_search", "expected_entities": {"max_price": 100}},
+  {"message": "Where is my order 1042?", "expected_intent": "order_status", "expected_entities": {"order_id": 1042}},
+  {"message": "What is your return policy?", "expected_intent": "policy_question", "expected_entities": {}},
+  {"message": "I want to talk to a human", "expected_intent": "human_handoff", "expected_entities": {}}
+]

@@ -1,0 +1,6 @@
+pytest
+httpx
+python-dotenv
+deepeval
+pytest-html
+pyyaml

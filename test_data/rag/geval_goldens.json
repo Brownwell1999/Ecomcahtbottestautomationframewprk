@@ -1,0 +1,10 @@
+[
+  {
+    "input": "What warranty do headphones have?",
+    "expected_output": "Headphones have a 1-year manufacturer warranty from the delivery date."
+  },
+  {
+    "input": "How long does express shipping take and what does it cost?",
+    "expected_output": "Express shipping takes 2-3 business days and costs $12.99."
+  }
+]

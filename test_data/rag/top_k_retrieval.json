@@ -1,0 +1,5 @@
+[
+  {"question": "What is your return policy for electronics?", "expected_chunk_id": "return_policy.md#0"},
+  {"question": "What warranty do headphones have?", "expected_chunk_id": "warranty_policy.md#0"},
+  {"question": "What payment methods do you accept?", "expected_chunk_id": "payment_policy.md#0"}
+]
