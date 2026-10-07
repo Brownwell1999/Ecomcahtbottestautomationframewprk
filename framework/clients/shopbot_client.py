@@ -24,9 +24,14 @@ mutation SendMessage($input: SendMessageInput!) {
       promptVersion
       retrievalContext
       toolCalls { name args output }
+      llmCalls { model }
     }
   }
 }"""
+
+# What ShopBot reported about itself in the replies of this run (filled in by send_message).
+# The baseline comparison uses it to label a run with the prompt version and the models that were tested.
+SEEN = {"prompt_version": None, "models": set()}
 
 
 def send_message(text, conversation_id=None, agent_mode=False, token=None, timeout=60):
@@ -42,7 +47,13 @@ def send_message(text, conversation_id=None, agent_mode=False, token=None, timeo
     body = response.json()
     # GraphQL errors come back as HTTP 200 + "errors", so check the body, not only the status
     assert "errors" not in body, f"ShopBot returned errors: {body['errors']}" #A GraphQL server can return HTTP 200 OK while reporting an error in the JSON response. This assertion catches that case.
-    return body["data"]["sendMessage"]
+    reply = body["data"]["sendMessage"]
+
+    debug = reply["debug"]  # only returned in dev/test
+    if debug:
+        SEEN["prompt_version"] = debug["promptVersion"]
+        SEEN["models"].update(call["model"] for call in debug["llmCalls"])
+    return reply
 
 
 def login(email, password):

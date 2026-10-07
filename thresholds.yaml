@@ -80,3 +80,9 @@ online:
 calibration:
   min_agreement: 0.75               # per metric: the judge must agree with the human on at least this share
                                     # (with 4 labelled examples per metric, that allows one disagreement)
+
+# ---------- Baseline comparison (baseline/compare_with_baseline.py) ----------
+# Each run's average score per metric is compared with the stored baseline (baseline/baseline.json).
+baseline:
+  max_score_drop: 0.10              # a metric whose average falls by more than this is a REGRESSION.
+                                    # Smaller changes are treated as run-to-run noise (LLM scores wobble).

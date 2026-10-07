@@ -125,3 +125,29 @@ python -m judge_calibration.run_calibration
 Run it when the judge model changes, when a metric's instructions change, or before changing a threshold.
 Labels must come from a person: set `"confirmed_by_human": true` after checking each one. The script warns
 while any label is still a draft. Each labelled example costs one metric evaluation; ShopBot is not needed.
+
+## Baseline comparison (better or worse than before?)
+
+A fixed threshold only says a score is acceptable: a drop from 0.95 to 0.72 still passes. The baseline
+comparison compares the last run with a version you accepted earlier.
+
+1. Every pytest run that measures a metric writes `reports/run_scores.json`: the average score per metric,
+   labelled with the prompt version and models ShopBot reported, the judge model and the dataset version.
+2. Compare it with the stored baseline:
+
+```bash
+python -m baseline.compare_with_baseline
+```
+
+   Each metric is `SAME`, `IMPROVED`, `REGRESSION` or new. A change only counts when it is larger than
+   `baseline.max_score_drop` in `thresholds.yaml` (LLM scores wobble between runs). Exit code `1` on a regression.
+3. When you are happy with a run, make it the new baseline and commit `baseline/baseline.json`:
+
+```bash
+python -m baseline.compare_with_baseline --accept
+```
+
+The baseline is kept per metric, so a run of a few tests updates only the metrics it measured. The comparison
+uses no LLM. It warns when the judge model or the dataset version differs, because scores measured with a
+different judge or different goldens are not comparable. Tests that use DeepEval's `assert_test` or the
+prompt injection classifier are not recorded yet.

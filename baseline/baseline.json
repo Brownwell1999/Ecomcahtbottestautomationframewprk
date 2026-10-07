@@ -1,0 +1,30 @@
+{
+  "Answer Relevancy": {
+    "cases": 1,
+    "average_score": 1.0,
+    "pass_rate": 1.0,
+    "labels": {
+      "prompt_version": "v2.2",
+      "shopbot_models": [
+        "openai/gpt-oss-20b"
+      ],
+      "judge_model": "claude-sonnet-5-5",
+      "dataset_version": "1.2"
+    },
+    "accepted_from_run_at": "2026-10-07T12:46:31.068735+00:00"
+  },
+  "Correctness [GEval]": {
+    "cases": 1,
+    "average_score": 1.0,
+    "pass_rate": 1.0,
+    "labels": {
+      "prompt_version": "v2.2",
+      "shopbot_models": [
+        "openai/gpt-oss-20b"
+      ],
+      "judge_model": "claude-sonnet-5-5",
+      "dataset_version": "1.2"
+    },
+    "accepted_from_run_at": "2026-10-07T12:46:31.068735+00:00"
+  }
+}
