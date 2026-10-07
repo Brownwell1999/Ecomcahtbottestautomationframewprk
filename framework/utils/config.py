@@ -19,6 +19,9 @@ TEST_DATA_DIR = PROJECT_ROOT / "test_data"
 # Quality gates from thresholds.yaml: THRESHOLDS["metrics"]["answer_relevancy"], THRESHOLDS["limits"]["max_answer_words"]
 THRESHOLDS = yaml.safe_load((PROJECT_ROOT / "thresholds.yaml").read_text(encoding="utf-8"))
 
+# Which version of the golden datasets is in test_data/ (shown in every test report, so runs can be compared)
+DATASET_VERSION = str(yaml.safe_load((TEST_DATA_DIR / "dataset_version.yaml").read_text(encoding="utf-8"))["version"])
+
 
 def load_test_data(name):
     """Read a JSON file from test_data/, e.g. load_test_data("chatbot/answer_relevancy.json")."""
@@ -35,6 +38,11 @@ JUDGE_MODEL = os.getenv("JUDGE_MODEL", "claude-sonnet-5-5")
 # (online_eval/) reads traces from this project and writes its scores back onto them.
 LANGSMITH_API_KEY = os.getenv("LANGSMITH_API_KEY")
 LANGSMITH_PROJECT = os.getenv("LANGSMITH_PROJECT", "shopbot-dev")
+
+# Where ShopBot's own repo is on this machine. Used only by the dataset tools (dataset_tools/):
+# the knowledge base is the source for synthetic goldens, and thumbs-down feedback is read from its database.
+SHOPBOT_DIR = Path(os.getenv("SHOPBOT_DIR", "C:/Ecomchatboat"))
+KNOWLEDGE_BASE_DIR = Path(os.getenv("SHOPBOT_KNOWLEDGE_BASE_DIR", str(SHOPBOT_DIR / "data" / "knowledge_base")))
 
 
 r"""

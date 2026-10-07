@@ -53,15 +53,15 @@ def score_turn(turn):
     """Score one real turn with every metric that fits it. Returns one result dict per metric."""
     # An empty reply cannot be judged, and the user saw nothing: count it as a failed answer
     if turn["answer"].strip() == "":
-        return [{"run_id": turn["run_id"], "question": turn["question"], "metric": "answer_relevancy",
-                 "score": 0.0, "passed": False, "reason": "ShopBot returned an empty reply", "error": None}]
+        return [{"run_id": turn["run_id"], "question": turn["question"], "answer": turn["answer"],
+                 "metric": "answer_relevancy", "score": 0.0, "passed": False, "reason": "ShopBot returned an empty reply", "error": None}]
 
     test_case = LLMTestCase(input=turn["question"], actual_output=turn["answer"],
                             retrieval_context=turn["retrieval_context"] or None)
     results = []
     for name, metric in metrics_for(turn).items():
-        result = {"run_id": turn["run_id"], "question": turn["question"], "metric": name,
-                  "score": None, "passed": None, "reason": None, "error": None}
+        result = {"run_id": turn["run_id"], "question": turn["question"], "answer": turn["answer"],
+                  "metric": name, "score": None, "passed": None, "reason": None, "error": None}
         try:
             metric.measure(test_case)
             result["score"] = metric.score

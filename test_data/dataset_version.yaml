@@ -1,0 +1,17 @@
+# The version of the golden datasets in test_data/.
+# Every test report shows this version, so two runs can be compared fairly:
+#   same version, lower score   -> ShopBot got worse
+#   different version           -> the questions changed, so the scores are not directly comparable
+#
+# RULE: whenever goldens are added, removed or changed, raise the version and add a line to `history`.
+#   first number  = a big change (a new suite of goldens, or many goldens rewritten)
+#   second number = a small change (a few goldens added or corrected)
+version: "1.1"
+
+history:
+  - version: "1.0"
+    date: 2026-10-03
+    change: Hand-written goldens for the chatbot, RAG, LLM, prompt, agentic, security and performance tests.
+  - version: "1.1"
+    date: 2026-10-07
+    change: Added 5 synthetic goldens generated from ShopBot's knowledge base (test_data/synthetic/policy_goldens.json, not yet reviewed or used by a test).

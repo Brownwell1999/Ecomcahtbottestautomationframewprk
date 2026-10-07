@@ -76,3 +76,32 @@ Each sampled turn costs judge calls (up to 5 metrics), so keep `sample_size` sma
 
 ShopBot does not need to be running: the job needs only `LANGSMITH_API_KEY` and `ANTHROPIC_API_KEY` in `.env`.
 LangSmith is only the source of traces and the place for dashboards and alerts; all scoring is DeepEval.
+
+## Dataset management (goldens)
+
+A golden is a test question, usually with its correct answer. They live in `test_data/`.
+
+**Version.** `test_data/dataset_version.yaml` holds the dataset version and a history of changes. Every pytest
+run shows it (terminal header, the Environment table of `report.html`, a property in `junit.xml`), so two
+runs can be compared fairly: same version and a lower score means ShopBot got worse. Whenever goldens are
+added or changed, raise the version and add a history line.
+
+**Synthetic goldens.** An LLM writes questions and expected answers from ShopBot's knowledge base:
+
+```bash
+python -m dataset_tools.generate_synthetic_goldens --count 5
+```
+
+It appends to `test_data/synthetic/policy_goldens.json` with `status: "needs_review"`, one knowledge base
+section per golden, and never rewrites existing entries. It uses the LLM only when you run it (about 2-3
+calls per golden). Review every generated golden before a test uses it.
+
+**Production failures.** Real failures become candidates for new goldens:
+
+```bash
+python -m dataset_tools.export_production_failures
+```
+
+It collects thumbs-down answers from ShopBot's database and failed turns from `reports/online_eval.json`
+into `test_data/review/production_failures.json`. It uses no LLM. A candidate only shows the wrong answer:
+write the correct `expected_output`, move it into a golden file, and raise the dataset version.

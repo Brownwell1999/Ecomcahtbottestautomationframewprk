@@ -1,0 +1,52 @@
+[
+  {
+    "input": "My password reset link, which was emailed to me after I clicked \"Forgot password\" on the sign-in page, may have expired because it was sent a while ago. The link expires after 30 minutes, so how do I get a new password reset link?",
+    "expected_output": "Go back to the sign-in page and click \"Forgot password\" again. A new link will be emailed to you, and it will also expire after 30 minutes, so use it promptly.\n\nThe context doesn't explicitly describe requesting a replacement link, but repeating the same steps is the process it gives for resetting your password.",
+    "context": [
+      "## Account\n**How do I reset my password?**\nClick \"Forgot password\" on the sign-in page and follow the link sent to your email. The link expires after 30 minutes.\n\n**Can I shop without an account?**\nYes, guest checkout is available. You need an account to track orders in My Orders, start returns online and earn rewards.\n\n**How do I delete my account?**\nGo to Account Settings → Privacy → Delete account. Deletion is completed within 30 days as required by data protection laws.\n"
+    ],
+    "source_file": "faq.md",
+    "section": "Account",
+    "status": "needs_review"
+  },
+  {
+    "input": "Does ShopEase offer Buy Now, Pay Later through Klarna that splits orders between $50 and $1,000 into 4 interest-free payments?",
+    "expected_output": "Yes. ShopEase offers Buy Now, Pay Later through Klarna for orders between $50 and $1,000. The purchase is split into 4 interest-free payments.",
+    "context": [
+      "## Accepted payment methods\n- Credit and debit cards: Visa, Mastercard, American Express, Discover.\n- PayPal, Apple Pay and Google Pay.\n- ShopEase Wallet balance and ShopEase gift cards.\n- **Buy Now, Pay Later** via Klarna for orders between **$50 and $1,000**, split into 4 interest-free payments.\n- Cash on delivery is **not** available.\n"
+    ],
+    "source_file": "payment_policy.md",
+    "section": "Accepted payment methods",
+    "status": "needs_review"
+  },
+  {
+    "input": "I received a pair of headphones last week. According to the return policy, which gives electronics a 15-day return window from delivery and requires all original accessories and packaging, am I still eligible to return them if I keep the original accessories and packaging?",
+    "expected_output": "Yes, you're likely still eligible. Headphones count as electronics, which have a 15-day return window from delivery. Since you received them last week (about 7 days ago), you're within that window. You must return them with all original accessories and packaging.\n\nIf they were delivered between November 15 and December 31, the holiday policy extends your return deadline to January 31.",
+    "context": [
+      "## Return window\n- Most items can be returned within **30 days** of delivery.\n- **Electronics** have a shorter return window of **15 days** from delivery and must include all original accessories and packaging.\n- **Footwear** must be unworn and returned in the original shoe box within 30 days.\n- During the holiday season (orders delivered between November 15 and December 31) the return window is extended until **January 31**.\n"
+    ],
+    "source_file": "return_policy.md",
+    "section": "Return window",
+    "status": "needs_review"
+  },
+  {
+    "input": "According to the ShopEase domestic (United States) shipping options table, which lists Standard shipping as 4–6 business days at $4.99, free on orders over $50, Express as 2–3 business days at $12.99, and Next Day as 1 business day (order before 2 PM local time) at $24.99, is standard shipping free on orders over $50, and is the delivery time for standard shipping 4–6 business days?",
+    "expected_output": "Yes to both. According to the table, Standard shipping is free on orders over $50 (otherwise $4.99), and its delivery time is 4–6 business days.",
+    "context": [
+      "## Shipping options (domestic, United States)\n| Option | Delivery time | Cost |\n|---|---|---|\n| Standard | 4–6 business days | $4.99, **free on orders over $50** |\n| Express | 2–3 business days | $12.99 |\n| Next Day | 1 business day (order before 2 PM local time) | $24.99 |\n\nShopEase Plus members get free Express shipping on all orders.\n"
+    ],
+    "source_file": "shipping_policy.md",
+    "section": "Shipping options (domestic, United States)",
+    "status": "needs_review"
+  },
+  {
+    "input": "I bought an air fryer and a pair of earbuds. Under a standard warranty policy that provides a 1-year manufacturer warranty from the delivery date for electronics (such as earbuds) and a 2-year warranty for home & kitchen appliances (such as air fryers), does the air fryer have a longer warranty than the earbuds, and how long is the warranty for each?",
+    "expected_output": "Yes, the air fryer has the longer warranty.\n\n- **Air fryer** (home & kitchen appliance): **2-year** warranty.\n- **Earbuds** (electronics): **1-year** manufacturer warranty from the delivery date.\n\nThe air fryer's coverage lasts one year longer than the earbuds'.",
+    "context": [
+      "## Standard warranty\n- **Electronics** (earbuds, speakers, smartwatches, monitors, keyboards, headphones, chargers, webcams): **1-year** manufacturer warranty from the delivery date.\n- **Home & kitchen appliances** (coffee makers, air fryers, blenders, kettles, stand mixers): **2-year** warranty.\n- **Fitness trackers** and **cycling helmets**: 1-year warranty.\n- Fashion, footwear and beauty products are covered only by the 30-day return policy, not by a warranty.\n"
+    ],
+    "source_file": "warranty_policy.md",
+    "section": "Standard warranty",
+    "status": "needs_review"
+  }
+]
