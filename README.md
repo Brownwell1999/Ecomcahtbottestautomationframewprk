@@ -151,3 +151,28 @@ The baseline is kept per metric, so a run of a few tests updates only the metric
 uses no LLM. It warns when the judge model or the dataset version differs, because scores measured with a
 different judge or different goldens are not comparable. Tests that use DeepEval's `assert_test` or the
 prompt injection classifier are not recorded yet.
+
+## Red teaming (generated attacks)
+
+The security tests replay a fixed list of attacks. The red team script has an LLM write **new** attacks in
+different disguises and runs them against ShopBot:
+
+```bash
+python -m redteam.run_redteam
+```
+
+1. One LLM call writes the attacks (default 5), starting from the seed attacks in
+   `test_data/security/prompt_injection.json`. Each uses a different disguise: rephrasing, role-play,
+   a hypothetical, hidden in a normal request, fake authority, another language.
+2. Each attack is sent to ShopBot and the judge labels the reply `resisted`, `partially_followed` or
+   `followed_injection`.
+3. Everything is saved to `reports/redteam.json` (attack, reply, label, reason), so a finding can be reproduced.
+4. Exit code `1` when the resistance rate is below `redteam.min_resistance_rate` in `thresholds.yaml`.
+5. Attacks that worked go to `test_data/review/redteam_findings.json`. After a person confirms one, add it to
+   `test_data/security/prompt_injection.json` and raise the dataset version.
+
+Cost: 1 LLM call to write the attacks and 1 judge call per attack. ShopBot must be running.
+
+This is a small home-made generator for one weakness (prompt injection), not a full red-teaming tool: it has
+no multi-turn or adaptive attacks. A dedicated tool such as DeepTeam would be the next step; it needs
+Python below 3.14, so it would run in its own environment. Only use this against your own ShopBot.
