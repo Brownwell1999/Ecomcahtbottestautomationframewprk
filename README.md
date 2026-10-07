@@ -105,3 +105,23 @@ python -m dataset_tools.export_production_failures
 It collects thumbs-down answers from ShopBot's database and failed turns from `reports/online_eval.json`
 into `test_data/review/production_failures.json`. It uses no LLM. A candidate only shows the wrong answer:
 write the correct `expected_output`, move it into a golden file, and raise the dataset version.
+
+## Judge calibration (can the judge be trusted?)
+
+Every evaluation test trusts the judge LLM, but the judge can be wrong. This script compares the judge's
+verdicts with verdicts a person gave on the same answers:
+
+```bash
+python -m judge_calibration.run_calibration
+```
+
+- Labels: `test_data/calibration/judge_labels.json`. Each example has an answer, the metric, and a
+  `human_verdict` of `pass` or `fail`. Each metric needs both good and bad answers.
+- It runs the same metric functions the tests use, then reports the agreement per metric and how the judge
+  disagreed: **too strict** (failed a good answer) or **too lenient** (passed a bad one, the dangerous kind).
+- Exit code `1` when a metric's agreement is below `calibration.min_agreement` in `thresholds.yaml`.
+- Report: `reports/judge_calibration.json`, which records the judge model.
+
+Run it when the judge model changes, when a metric's instructions change, or before changing a threshold.
+Labels must come from a person: set `"confirmed_by_human": true` after checking each one. The script warns
+while any label is still a draft. Each labelled example costs one metric evaluation; ShopBot is not needed.

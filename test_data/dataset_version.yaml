@@ -6,7 +6,7 @@
 # RULE: whenever goldens are added, removed or changed, raise the version and add a line to `history`.
 #   first number  = a big change (a new suite of goldens, or many goldens rewritten)
 #   second number = a small change (a few goldens added or corrected)
-version: "1.1"
+version: "1.2"
 
 history:
   - version: "1.0"
@@ -15,3 +15,6 @@ history:
   - version: "1.1"
     date: 2026-10-07
     change: Added 5 synthetic goldens generated from ShopBot's knowledge base (test_data/synthetic/policy_goldens.json, not yet reviewed or used by a test).
+  - version: "1.2"
+    date: 2026-10-07
+    change: Added 12 labelled examples for judge calibration (test_data/calibration/judge_labels.json; the labels are drafts until a person confirms them).
