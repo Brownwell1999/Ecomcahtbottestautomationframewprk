@@ -1,6 +1,7 @@
 """Shared pytest setup. pytest loads this file automatically before the tests."""
 
 import json
+import os
 import sys
 from datetime import datetime, timezone
 
@@ -71,6 +72,8 @@ def pytest_sessionfinish(session):
                            "pass_rate": round(entry["passed"] / entry["cases"], 4)}
                     for name, entry in metrics.items()},
     }
-    report_file = PROJECT_ROOT / "reports" / "run_scores.json"
+    # RUN_SCORES_FILE: the CI pipeline gives each quality gate its own score file, so one gate's run
+    # does not overwrite another's (azure-pipelines.yml). Locally it stays run_scores.json.
+    report_file = PROJECT_ROOT / "reports" / os.getenv("RUN_SCORES_FILE", "run_scores.json")
     report_file.parent.mkdir(exist_ok=True)
     report_file.write_text(json.dumps(run, indent=2), encoding="utf-8")

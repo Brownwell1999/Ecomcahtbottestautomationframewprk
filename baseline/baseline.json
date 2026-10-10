@@ -26,5 +26,21 @@
       "dataset_version": "1.2"
     },
     "accepted_from_run_at": "2026-10-07T12:46:31.068735+00:00"
+  },
+  "Faithfulness": {
+    "cases": 0,
+    "average_score": 0.8,
+    "pass_rate": null,
+    "labels": {
+      "prompt_version": "v2.2",
+      "shopbot_models": [
+        "openai/gpt-oss-20b"
+      ],
+      "judge_model": "claude-sonnet-5-5",
+      "dataset_version": "1.2"
+    },
+    "accepted_from_run_at": null,
+    "provisional": true,
+    "note": "ESTIMATE, not measured. 0.8 = the pass mark (0.7) + the allowed drop (0.10), so the regression gate fails Faithfulness only when its average falls below the pass mark. Replace it with a real run: python -m baseline.compare_with_baseline --accept"
   }
 }

@@ -2,6 +2,8 @@
 
 Test automation framework for ShopBot (pytest + DeepEval).
 
+How it works and why (strategy, design, architecture, flow charts): [docs/FRAMEWORK_GUIDE.md](docs/FRAMEWORK_GUIDE.md).
+
 ## Running the tests
 
 ShopBot must be running locally (`docker compose up -d` in the ShopBot repo), and `.env` must contain
@@ -48,6 +50,32 @@ Every pass mark is in one file, `thresholds.yaml`, at the project root:
 
 To tune a gate, change the number in `thresholds.yaml`; no test or framework code needs editing.
 A single test can still override it: `answer_relevancy_metric(threshold=0.9)`.
+
+## CI quality gates
+
+`azure-pipelines.yml` deploys ShopBot, waits until it answers, then runs the gates in order. A gate that fails
+turns the pipeline red and the later gates do not run.
+
+- **A push to `main`** runs Gate 1 only (no judge calls).
+- **A run started by hand** (Azure DevOps: Pipelines > Run pipeline) runs all four gates.
+
+| Gate | Rule | Command | Judge calls |
+|---|---|---|---|
+| 1. Smoke | Every smoke test must pass | `pytest -m smoke` | None |
+| 2. AI evaluation | Answer Relevancy and Faithfulness at or above their pass mark (0.7) | `pytest tests/CHATBOT/test_answer_relevancy.py tests/PROMPT/test_Faithfulness.py` | 6 tests |
+| 3. Security | Every security test must pass (prompt injection, PII leakage, toxicity, unsafe action) | `pytest tests/SECURITY_GUARDRAILS` | 12 tests |
+| 4. Regression | No Gate 2 metric drops by more than 0.10 against `baseline/baseline.json` | `python -m baseline.compare_with_baseline` | None |
+
+- The pass marks and the allowed drop come from `thresholds.yaml`; nothing is hard-coded in the pipeline.
+- Each gate writes its own report (`reports/junit_gate<N>_*.xml`, `reports/report_gate<N>_*.html`) and its own
+  score file, named by the environment variable `RUN_SCORES_FILE` (default `run_scores.json`). Gate 4 reads the
+  score file Gate 2 wrote.
+- The Faithfulness baseline (0.8) is a provisional estimate, not a measured run. Replace it after a good run with
+  `python -m baseline.compare_with_baseline --accept` and commit `baseline/baseline.json`.
+- The pipeline needs the secret variable `ANTHROPIC_API_KEY` and fails with a clear message when it is missing.
+- The gates detect a problem but do not block a merge.
+
+More detail and a flow chart: section 9.3 of [docs/FRAMEWORK_GUIDE.md](docs/FRAMEWORK_GUIDE.md).
 
 ## Online evaluation (scoring real conversations)
 

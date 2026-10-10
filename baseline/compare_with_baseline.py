@@ -20,11 +20,13 @@ Uses no LLM: it only reads two files.
 
 import argparse
 import json
+import os
 import sys
 
 from framework.utils.config import PROJECT_ROOT, THRESHOLDS
 
-RUN_FILE = PROJECT_ROOT / "reports" / "run_scores.json"
+# RUN_SCORES_FILE: in the CI pipeline each quality gate has its own score file (see tests/conftest.py)
+RUN_FILE = PROJECT_ROOT / "reports" / os.getenv("RUN_SCORES_FILE", "run_scores.json")
 BASELINE_FILE = PROJECT_ROOT / "baseline" / "baseline.json"
 MAX_DROP = THRESHOLDS["baseline"]["max_score_drop"]
 
@@ -76,7 +78,7 @@ def main():
     args = parser.parse_args()
 
     if not RUN_FILE.exists():
-        print("No reports/run_scores.json found: run some evaluation tests with pytest first.")
+        print(f"No reports/{RUN_FILE.name} found: run some evaluation tests with pytest first.")
         return 2
     run = json.loads(RUN_FILE.read_text(encoding="utf-8"))
     baseline = json.loads(BASELINE_FILE.read_text(encoding="utf-8")) if BASELINE_FILE.exists() else {}
@@ -100,6 +102,8 @@ def main():
             continue
         print(f"  {row['metric']}: baseline {row['baseline']} -> now {row['current']} "
               f"(change {row['change']:+}) = {row['verdict'].upper()}")
+        if baseline[row["metric"]].get("provisional"):
+            print("      NOTE: this baseline is an estimate, not a measured run. Replace it with --accept after a good run.")
         for note in row["notes"]:
             print(f"      changed since the baseline: {note}")
         if not_comparable(row):
