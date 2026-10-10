@@ -687,7 +687,7 @@ flowchart LR
 - Each baseline entry remembers its labels: prompt version, ShopBot's models, judge model, dataset version. The comparison shows what changed and warns when the judge or the dataset differs, because those scores are not comparable.
 - It uses no LLM. It only reads two files.
 - Not recorded: tests that use DeepEval's `assert_test` or the prompt injection classifier, because they do not go through `assert_metric_passes`.
-- The baseline holds two measured metrics (one case each) and a provisional, unmeasured Faithfulness entry for the CI regression gate (section 9.3).
+- The baseline holds three measured metrics: Answer Relevancy and Faithfulness (three cases each, the two metrics the CI regression gate compares) and Correctness (one case).
 
 ### 8.4 Dataset tools: `dataset_tools/`
 
@@ -827,13 +827,13 @@ Why each gate is separate:
 - The pipeline runs on a **self-hosted agent** (the developer's own machine, pool `Default`), because it deploys ShopBot into the local Docker.
 - The judge key is a secret pipeline variable, not a value in the file.
 - **Judge cost:** a push to `main` costs no judge calls. A manual run costs 18 judge-scored tests (6 in Gate 2, 12 in Gate 3).
-- **The Faithfulness baseline is an estimate.** `baseline/baseline.json` holds a measured Answer Relevancy (1.0, from one case) and a **provisional** Faithfulness of 0.8 that was not measured (`"provisional": true`). 0.8 is the pass mark (0.7) plus the allowed drop (0.10), so Gate 4 fails Faithfulness only when its average falls below the pass mark. The comparison prints a note for a provisional baseline. Replace it after a good run with `python -m baseline.compare_with_baseline --accept` and commit the file.
-- **The Answer Relevancy baseline is strict.** It is 1.0, so Gate 4 fails when the average of the three Gate 2 questions is below 0.9.
+- **The baseline for Gate 4 is measured and strict.** `baseline/baseline.json` holds Answer Relevancy 1.0 and Faithfulness 1.0, each from three cases in a run on 2026-10-10 (prompt `v2.2`, judge `claude-sonnet-5-5`, dataset 1.2). Gate 4 therefore fails when either average is below 0.9. With only three questions per metric, one weak answer can cause that.
+- **Provisional baselines.** A baseline entry can be an estimate, marked `"provisional": true`, to cover a metric before it has been measured; the comparison prints a note for such an entry. None exists now.
 - **The gates detect, they do not block a merge.** The pipeline starts after the code is already on `main`, and Gates 2 to 4 only run when someone starts them. Blocking a merge needs a pull-request trigger and a branch policy.
 - **A known ShopBot defect can turn a gate red** (see section 11). That is the gate working.
 - The full evaluation step (all `evaluation`, `agentic` and `performance` tests plus step efficiency) is still in the file but runs only on a schedule, and **no schedule is configured**.
 - The other jobs in section 8 (online evaluation, judge calibration, dataset tools, red teaming) are not part of the pipeline. They are run by hand.
-- The gates were added as configuration and have not yet been run in Azure DevOps.
+- All four gates passed once on 2026-10-10 when their commands were run locally (1, 6 and 12 tests, then the comparison). The pipeline itself has not yet been run in Azure DevOps with all four gates.
 
 ---
 

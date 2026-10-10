@@ -70,7 +70,8 @@ turns the pipeline red and the later gates do not run.
 - Each gate writes its own report (`reports/junit_gate<N>_*.xml`, `reports/report_gate<N>_*.html`) and its own
   score file, named by the environment variable `RUN_SCORES_FILE` (default `run_scores.json`). Gate 4 reads the
   score file Gate 2 wrote.
-- The Faithfulness baseline (0.8) is a provisional estimate, not a measured run. Replace it after a good run with
+- The baseline holds Answer Relevancy 1.0 and Faithfulness 1.0 (measured, three cases each), so Gate 4 fails when
+  either average is below 0.9. After a run you are happy with, update it with
   `python -m baseline.compare_with_baseline --accept` and commit `baseline/baseline.json`.
 - The pipeline needs the secret variable `ANTHROPIC_API_KEY` and fails with a clear message when it is missing.
 - The gates detect a problem but do not block a merge.
