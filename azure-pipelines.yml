@@ -1,24 +1,10 @@
 # Runs on a SELF-HOSTED agent (your PC, pool "Default") because it deploys ShopBot into the local Docker.
-#
-# FOUR QUALITY GATES, after: deploy ShopBot -> wait until it answers
-#
-#   Gate 1  Smoke          ShopBot is reachable and answers                       (no judge LLM)
-#   Gate 2  AI evaluation  Answer Relevancy and Faithfulness meet their pass mark (judge LLM, 6 tests)
-#   Gate 3  Security       prompt injection, PII leakage, toxicity, unsafe action (judge LLM, 12 tests)
-#   Gate 4  Regression     no metric of Gate 2 dropped against the baseline       (no judge LLM)
-#
-# WHEN EACH GATE RUNS (to save judge LLM calls):
-#   every push to main            -> Gate 1 only
-#   a run you start by hand       -> Gates 1, 2, 3 and 4      (Azure DevOps: Pipelines > Run pipeline)
-# Gates 2 and 3 cost judge calls, and Gate 4 needs the scores of Gate 2, so all three are manual.
-#
-# A gate that fails turns the pipeline red and the gates after it do not run (fail fast: a cheap gate
-# stops the run before the expensive ones spend judge calls).
-# The pass marks and the allowed drop are in thresholds.yaml; nothing is hard-coded here.
-#
-# There is NO schedule: the full evaluation suite (the last test step) uses many judge LLM calls, so it does
-# not run automatically. To run it nightly, add a `schedules:` block with a cron here.
+#   every push to main : deploy -> wait for healthy -> smoke tests -> publish results
+# There is NO schedule: the full evaluation suite (step 4) uses many judge LLM calls, so it does not run
+# automatically. To run it nightly again, add a `schedules:` block with a cron here.
 # Needs one secret pipeline variable: ANTHROPIC_API_KEY (Pipelines > Edit > Variables > keep this value secret).
+# The designed pipeline with five quality gates that block a pull request is in
+# azure-pipelines.quality-gates.yml. It is not connected, so it does not run (see that file).
 
 trigger:
   branches:
@@ -40,7 +26,7 @@ steps:
       # No --wait: the one-shot ollama-pull container exits by design, and --wait counts that as a failure
       docker compose up -d --build
       if ($LASTEXITCODE -ne 0) { exit 1 }
-    displayName: Deploy ShopBot in Docker
+    displayName: 1. Deploy ShopBot in Docker
     workingDirectory: $(SHOPBOT_DIR)
 
   - powershell: |
@@ -55,68 +41,17 @@ steps:
       }
       Write-Error "ShopBot did not answer within 5 minutes"
       exit 1
-    displayName: Wait until ShopBot answers
+    displayName: 2. Wait until ShopBot answers
 
   - powershell: |
       python -m venv .venv
       .\.venv\Scripts\python -m pip install -q -r requirements.txt
     displayName: Install test framework
 
-  # ---------- Gate 1: Smoke ----------
-  # Rule: every smoke test must pass. Fails when the API call fails or the reply is empty.
-  # Each gate writes its own report files, so one gate does not overwrite another's.
-  - powershell: >
-      .\.venv\Scripts\python -m pytest -m smoke
-      --junitxml=reports/junit_gate1_smoke.xml --html=reports/report_gate1_smoke.html
-    displayName: "Gate 1: Smoke"
-
-  # Without the judge key every judge test is SKIPPED, and a gate with only skipped tests would look green
-  # while checking nothing. So stop here with a clear message instead.
-  - powershell: |
-      if (-not $env:ANTHROPIC_API_KEY -or $env:ANTHROPIC_API_KEY -like "*ANTHROPIC_API_KEY*") {
-        Write-Error "The secret pipeline variable ANTHROPIC_API_KEY is not set: Gates 2 and 3 cannot run."
-        exit 1
-      }
-    displayName: Check the judge key is set
-    condition: and(succeeded(), eq(variables['Build.Reason'], 'Manual'))
+  - powershell: .\.venv\Scripts\python -m pytest -m smoke
+    displayName: 3. Smoke tests
     env:
       ANTHROPIC_API_KEY: $(ANTHROPIC_API_KEY)
-
-  # ---------- Gate 2: AI evaluation ----------
-  # Rule: Answer Relevancy and Faithfulness must be at or above their pass mark (thresholds.yaml, 0.7).
-  # RUN_SCORES_FILE: where this gate saves its average scores; Gate 4 compares that file with the baseline.
-  - powershell: >
-      .\.venv\Scripts\python -m pytest
-      tests/CHATBOT/test_answer_relevancy.py tests/PROMPT/test_Faithfulness.py
-      --junitxml=reports/junit_gate2_ai_evaluation.xml --html=reports/report_gate2_ai_evaluation.html
-    displayName: "Gate 2: AI evaluation"
-    condition: and(succeeded(), eq(variables['Build.Reason'], 'Manual'))
-    env:
-      ANTHROPIC_API_KEY: $(ANTHROPIC_API_KEY)
-      RUN_SCORES_FILE: ai_gate_scores.json
-
-  # ---------- Gate 3: Security ----------
-  # Rule: every security test must pass (prompt injection, PII leakage, toxicity, unsafe action).
-  # Its own score file, so it does not replace the Gate 2 scores that Gate 4 needs.
-  - powershell: >
-      .\.venv\Scripts\python -m pytest tests/SECURITY_GUARDRAILS
-      --junitxml=reports/junit_gate3_security.xml --html=reports/report_gate3_security.html
-    displayName: "Gate 3: Security"
-    condition: and(succeeded(), eq(variables['Build.Reason'], 'Manual'))
-    env:
-      ANTHROPIC_API_KEY: $(ANTHROPIC_API_KEY)
-      RUN_SCORES_FILE: security_gate_scores.json
-
-  # ---------- Gate 4: Regression ----------
-  # Rule: no Gate 2 metric may drop by more than baseline.max_score_drop (thresholds.yaml, 0.10)
-  # against baseline/baseline.json. The script exits with 1 on a regression. It uses no LLM.
-  # A metric that has no baseline yet is reported as new and cannot fail: accept a good run once with
-  #   python -m baseline.compare_with_baseline --accept     (then commit baseline/baseline.json)
-  - powershell: .\.venv\Scripts\python -m baseline.compare_with_baseline
-    displayName: "Gate 4: Regression"
-    condition: and(succeeded(), eq(variables['Build.Reason'], 'Manual'))
-    env:
-      RUN_SCORES_FILE: ai_gate_scores.json
 
   # Scheduled runs only, and no schedule is configured now (see the top of this file), so this step is skipped.
   # -m evaluation: judge-based tests; -m agentic: agent tools; -m performance: latency and load.
@@ -126,23 +61,22 @@ steps:
       $pytestExit = $LASTEXITCODE
       .\.venv\Scripts\deepeval test run tests/AGENTIC/test_step_efficiency.py -d all
       if ($pytestExit -ne 0 -or $LASTEXITCODE -ne 0) { exit 1 }
-    displayName: Full evaluation suite (scheduled runs only)
+    displayName: 4. Full evaluation suite (nightly)
     condition: and(succeeded(), eq(variables['Build.Reason'], 'Schedule'))
     env:
       ANTHROPIC_API_KEY: $(ANTHROPIC_API_KEY)
 
-  # Always publish, also when a gate failed: the reports show which test failed and the judge's reason.
   - task: PublishTestResults@2
-    displayName: Publish test results
+    displayName: 5. Publish test results
     condition: always()
     inputs:
       testResultsFormat: JUnit
-      testResultsFiles: reports/junit*.xml
-      testRunTitle: ShopBot quality gates ($(Build.Reason))
+      testResultsFiles: reports/junit.xml
+      testRunTitle: ShopBot evaluation ($(Build.Reason))
 
   - task: PublishBuildArtifacts@1
-    displayName: Publish reports (HTML per gate + score files)
+    displayName: Publish HTML report
     condition: always()
     inputs:
-      PathtoPublish: reports
-      ArtifactName: reports
+      PathtoPublish: reports/report.html
+      ArtifactName: report

@@ -51,32 +51,45 @@ Every pass mark is in one file, `thresholds.yaml`, at the project root:
 To tune a gate, change the number in `thresholds.yaml`; no test or framework code needs editing.
 A single test can still override it: `answer_relevancy_metric(threshold=0.9)`.
 
-## CI quality gates
+## CI
 
-`azure-pipelines.yml` deploys ShopBot, waits until it answers, then runs the gates in order. A gate that fails
-turns the pipeline red and the later gates do not run.
+There are two pipeline files. Only the first one runs.
 
-- **A push to `main`** runs Gate 1 only (no judge calls).
-- **A run started by hand** (Azure DevOps: Pipelines > Run pipeline) runs all four gates.
+| File | Status | What it does |
+|---|---|---|
+| `azure-pipelines.yml` | Active | On a push to `main`: deploy ShopBot, wait until it answers, smoke test, publish results. No judge calls |
+| `azure-pipelines.quality-gates.yml` | Designed, **not connected** (it never runs) | Five quality gates on every pull request that block the merge |
+
+The quality-gates pipeline is kept ready and switched off for now, because two of its gates cost judge LLM calls.
+What it does once connected:
+
+- **A pull request into `main`** runs all five gates. With the branch protection rule on GitHub switched on,
+  the PR cannot be merged until they are green. Draft PRs do not start the pipeline.
+- **A push to `main`** (the merge) runs Gate 1 only (no judge calls).
+- **A run started by hand** (Azure DevOps: Pipelines > Run pipeline) runs all five gates.
+
+A gate that fails turns the pipeline red and the later gates do not run.
 
 | Gate | Rule | Command | Judge calls |
 |---|---|---|---|
 | 1. Smoke | Every smoke test must pass | `pytest -m smoke` | None |
 | 2. AI evaluation | Answer Relevancy and Faithfulness at or above their pass mark (0.7) | `pytest tests/CHATBOT/test_answer_relevancy.py tests/PROMPT/test_Faithfulness.py` | 6 tests |
 | 3. Security | Every security test must pass (prompt injection, PII leakage, toxicity, unsafe action) | `pytest tests/SECURITY_GUARDRAILS` | 12 tests |
-| 4. Regression | No Gate 2 metric drops by more than 0.10 against `baseline/baseline.json` | `python -m baseline.compare_with_baseline` | None |
+| 4. Performance | One answer, and the p95 of 5 answers, within 30 seconds; bad requests get a clear error | `pytest tests/PERFORMANCE/test_response_time.py tests/PERFORMANCE/test_reliability_and_error_handling.py` | None |
+| 5. Regression | No Gate 2 metric drops by more than 0.10 against `baseline/baseline.json` | `python -m baseline.compare_with_baseline` | None |
 
 - The pass marks and the allowed drop come from `thresholds.yaml`; nothing is hard-coded in the pipeline.
 - Each gate writes its own report (`reports/junit_gate<N>_*.xml`, `reports/report_gate<N>_*.html`) and its own
-  score file, named by the environment variable `RUN_SCORES_FILE` (default `run_scores.json`). Gate 4 reads the
+  score file, named by the environment variable `RUN_SCORES_FILE` (default `run_scores.json`). Gate 5 reads the
   score file Gate 2 wrote.
-- The baseline holds Answer Relevancy 1.0 and Faithfulness 1.0 (measured, three cases each), so Gate 4 fails when
+- The baseline holds Answer Relevancy 1.0 and Faithfulness 1.0 (measured, three cases each), so Gate 5 fails when
   either average is below 0.9. After a run you are happy with, update it with
   `python -m baseline.compare_with_baseline --accept` and commit `baseline/baseline.json`.
 - The pipeline needs the secret variable `ANTHROPIC_API_KEY` and fails with a clear message when it is missing.
-- The gates detect a problem but do not block a merge.
+- To switch it on: create a pipeline in Azure DevOps from `azure-pipelines.quality-gates.yml`, then follow the
+  checklist in section 9.4 of the guide (branch protection on GitHub is what blocks the merge).
 
-More detail and a flow chart: section 9.3 of [docs/FRAMEWORK_GUIDE.md](docs/FRAMEWORK_GUIDE.md).
+More detail and flow charts: sections 9.3 and 9.4 of [docs/FRAMEWORK_GUIDE.md](docs/FRAMEWORK_GUIDE.md).
 
 ## Online evaluation (scoring real conversations)
 

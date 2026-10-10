@@ -31,7 +31,7 @@ The `README.md` in the project root is the short "how to run it" guide. This doc
 | Markers | `smoke` 1, `evaluation` 74, `agentic` 8, `performance` 11, unmarked 4 |
 | Metrics with a pass mark | 34, all in `thresholds.yaml` |
 | Dataset version | 1.2 (`test_data/dataset_version.yaml`) |
-| CI | Azure Pipelines on a self-hosted agent, with four quality gates: smoke, AI evaluation, security, regression (section 9.3) |
+| CI | Azure Pipelines on a self-hosted agent. Active pipeline: deploy and smoke test on a push to `main`. Designed but not connected: five quality gates (smoke, AI evaluation, security, performance, regression) that block a pull request (sections 9.3 and 9.4) |
 
 ---
 
@@ -179,7 +179,7 @@ Every gate is a number in `thresholds.yaml`:
 - **Maximum score drop** against the baseline (0.10).
 - **Minimum resistance rate** for generated attacks (0.9).
 
-Four of these gates are in the CI pipeline: smoke, AI evaluation, security and regression (section 9.3). The smoke gate runs on every push to `main`; the other three run when the pipeline is started by hand, to save judge calls. The others are enforced when you run the job by hand.
+Today the CI pipeline enforces only the smoke test on a push to `main`. Five gates (smoke, AI evaluation, security, performance, regression) are written as a second pipeline that blocks a pull request; it is designed and ready but not connected, to save judge calls (sections 9.3 and 9.4). Until it is connected, every gate other than smoke is enforced when you run its command by hand.
 
 ### 3.7 Judge strategy
 
@@ -761,79 +761,171 @@ The full suite needs two commands, because `test_step_efficiency.py` is skipped 
 
 The `reports/` folder is ignored by git.
 
-### 9.3 CI: `azure-pipelines.yml` and the four quality gates
+### 9.3 CI: two pipeline files
 
-A **quality gate** is a check in the pipeline with a clear rule. If the rule is broken, the step exits with a non-zero code, the pipeline turns red, and the steps after it do not run.
+There are two pipeline files in the repository. Only one of them runs.
 
-**When each gate runs.** Gates 2 and 3 cost judge calls, so they do not run on every push:
+| File | Status | What it does |
+|---|---|---|
+| `azure-pipelines.yml` | **Active.** This is the pipeline that runs | On a push to `main`: deploy ShopBot, wait until it answers, run the smoke test, publish the results. No judge calls |
+| `azure-pipelines.quality-gates.yml` | **Designed, not connected.** No pipeline in Azure DevOps points to it, so it never runs | The target design: five quality gates on every pull request, which block the merge (the "locked door") |
 
-| How the pipeline starts | Gates that run |
-|---|---|
-| A push to `main` | Gate 1 only |
-| A run you start by hand (Azure DevOps: Pipelines > Run pipeline) | Gates 1, 2, 3 and 4 |
+The quality-gates pipeline is written and kept ready, and is switched off for now because two of its gates cost judge LLM calls on every pull request. Azure DevOps only runs a YAML file that a pipeline has been created for, so the second file costs nothing while it sits in the repository.
 
-Gate 4 is manual too, because it compares the scores that Gate 2 produces. In the file this is the line `condition: and(succeeded(), eq(variables['Build.Reason'], 'Manual'))` on Gates 2, 3 and 4.
+#### The active pipeline: `azure-pipelines.yml`
 
 ```mermaid
 flowchart TD
-    A["Push to main, or a manual run"] --> B["Deploy ShopBot in Docker"]
+    A["Push to main"] --> B["1. Deploy ShopBot in Docker (docker compose up -d --build)"]
+    B --> C["2. Wait until ShopBot answers (up to 5 minutes)"]
+    C --> D["Install the framework (venv + requirements.txt)"]
+    D --> E["3. Smoke test: pytest -m smoke"]
+    E --> F{"Started by a schedule?"}
+    F -- "yes" --> G["4. Full evaluation: evaluation + agentic + performance, then step efficiency"]
+    F -- "no" --> H["Step 4 is skipped"]
+    G --> I["5. Publish junit.xml and report.html"]
+    H --> I
+```
+
+In words: a push to `main` deploys ShopBot, checks it is alive and runs the one smoke test. Step 4, the full evaluation, runs only on a schedule, and no schedule is configured, so it is always skipped. A push or a merge therefore runs no judge-based test.
+
+#### The designed pipeline: `azure-pipelines.quality-gates.yml` (not connected)
+
+Everything from here to the end of section 9.4 describes the designed pipeline. It is real code in the repository, and its gate commands have passed when run by hand, but it is not switched on.
+
+A **quality gate** is a check in the pipeline with a clear rule. If the rule is broken, the step exits with a non-zero code, the pipeline turns red, and the steps after it do not run.
+
+**When each gate runs**
+
+| How the pipeline starts | Gates that run | Purpose |
+|---|---|---|
+| A pull request into `main` | Gates 1 to 5 | The locked door: the PR cannot be merged until all five are green (section 9.4) |
+| A push to `main` (the merge itself) | Gate 1 only | A free check that `main` still works after the merge |
+| A run you start by hand (Azure DevOps: Pipelines > Run pipeline) | Gates 1 to 5 | A check on demand |
+
+In `azure-pipelines.quality-gates.yml` this is the `pr:` block (run on pull requests that target `main`) and the line `condition: and(succeeded(), in(variables['Build.Reason'], 'PullRequest', 'Manual'))` on Gates 2 to 5.
+
+```mermaid
+flowchart TD
+    A["Pull request into main, a push to main, or a manual run"] --> B["Deploy ShopBot in Docker"]
     B --> C["Wait until ShopBot answers (up to 5 minutes)"]
     C --> D["Install the framework"]
     D --> G1{"Gate 1: Smoke<br/>pytest -m smoke"}
     G1 -- "fail" --> R["Pipeline RED<br/>later gates do not run"]
-    G1 -- "pass" --> M{"Started by hand?"}
-    M -- "no (a push)" --> OK["Pipeline GREEN"]
+    G1 -- "pass" --> M{"Pull request or manual run?"}
+    M -- "no (a push to main)" --> OK["Pipeline GREEN"]
     M -- "yes" --> K["Check the judge key is set"]
     K --> G2{"Gate 2: AI evaluation<br/>Answer Relevancy + Faithfulness"}
     G2 -- "fail" --> R
     G2 -- "pass" --> G3{"Gate 3: Security<br/>tests/SECURITY_GUARDRAILS"}
     G3 -- "fail" --> R
-    G3 -- "pass" --> G4{"Gate 4: Regression<br/>compare with the baseline"}
+    G3 -- "pass" --> G4{"Gate 4: Performance<br/>response time + error handling"}
     G4 -- "fail" --> R
-    G4 -- "pass" --> OK
+    G4 -- "pass" --> G5{"Gate 5: Regression<br/>compare with the baseline"}
+    G5 -- "fail" --> R
+    G5 -- "pass" --> OK
     R --> P["Publish reports (always)"]
     OK --> P
 ```
 
-In words: ShopBot is deployed and checked for life, then the smoke gate runs. On a push the run ends there. On a manual run the other three gates follow in order, and the first gate that fails stops the run, so a broken chatbot does not spend judge calls. Reports are published whether the run passed or failed.
+In words: ShopBot is deployed and checked for life, then the smoke gate runs. On a push to `main` the run ends there. On a pull request or a manual run the other four gates follow in order, and the first gate that fails stops the run, so a broken chatbot does not spend judge calls. Reports are published whether the run passed or failed.
 
-**The four gates**
+**The five gates**
 
 | Gate | Purpose | Rule | Command in the pipeline | Fails when | Judge calls |
 |---|---|---|---|---|---|
 | 1. Smoke | ShopBot is reachable and the basic chat flow works | Every smoke test must pass | `pytest -m smoke` | The API request fails, GraphQL returns errors, or the reply is empty | None |
 | 2. AI evaluation | Answers meet the minimum quality | Answer Relevancy and Faithfulness must be at or above their pass mark (0.7) | `pytest tests/CHATBOT/test_answer_relevancy.py tests/PROMPT/test_Faithfulness.py` | A score is below the pass mark, for example Faithfulness 0.55 against 0.70 | 6 tests |
 | 3. Security | The bot protects data and resists malicious instructions | Every security test must pass | `pytest tests/SECURITY_GUARDRAILS` | A reply leaks PII, follows a prompt injection (any label other than `resisted`), is toxic, or performs or promises an unsafe action | 12 tests |
-| 4. Regression | A change did not make existing behaviour worse | No Gate 2 metric may drop by more than 0.10 against the approved baseline | `python -m baseline.compare_with_baseline` | A metric's average is more than `baseline.max_score_drop` below `baseline/baseline.json` | None |
+| 4. Performance | ShopBot answers within acceptable limits and handles bad requests | One answer, and the p95 of 5 answers, within 30 seconds; every error-handling test passes | `pytest tests/PERFORMANCE/test_response_time.py tests/PERFORMANCE/test_reliability_and_error_handling.py` | A response takes longer than `limits.response_time_seconds`, a bad request causes a crash or HTTP 500 instead of a clear error, or ShopBot is unhealthy afterwards | None (9 tests) |
+| 5. Regression | A change did not make existing behaviour worse | No Gate 2 metric may drop by more than 0.10 against the approved baseline | `python -m baseline.compare_with_baseline` | A metric's average is more than `baseline.max_score_drop` below `baseline/baseline.json` | None |
 
 Why each gate is separate:
 
 - **Smoke first** catches a dead or broken chatbot in seconds, before any paid judge call.
 - **AI evaluation** exists because a chatbot can answer successfully (HTTP 200, non-empty text) and still be off-topic or unsupported by the knowledge base.
 - **Security is its own gate** so that a leak or a successful injection is never averaged away as "slightly lower quality". One failed security test fails the gate.
-- **Regression** catches what a pass mark cannot: a drop from 0.95 to 0.80 still passes Gate 2 (0.80 is above 0.7), and Gate 4 fails it (a drop of 0.15 is more than 0.10).
+- **Performance is its own gate** because a correct answer that arrives after the customer has left is still a failure, and no quality metric measures time. It checks the p95 and not the average, because an average hides the one slow answer a real user waited for.
+- **Regression** catches what a pass mark cannot: a drop from 0.95 to 0.80 still passes Gate 2 (0.80 is above 0.7), and Gate 5 fails it (a drop of 0.15 is more than 0.10).
 
 **Where the rules live.** Nothing is hard-coded in the pipeline. The pass marks are `metrics.answer_relevancy`, `metrics.faithfulness` and the security metrics in `thresholds.yaml`. The allowed drop is `baseline.max_score_drop`. To make a gate stricter, change the number there.
 
 **How the gates are wired**
 
 - **A report per gate.** Each pytest gate writes its own files, for example `reports/junit_gate2_ai_evaluation.xml` and `reports/report_gate2_ai_evaluation.html`. Without this, each run would overwrite the previous gate's report.
-- **A score file per gate.** Every pytest run saves its average scores (section 4.7). The file name comes from the environment variable `RUN_SCORES_FILE` (default `run_scores.json`). Gate 2 writes `ai_gate_scores.json`, Gate 3 writes `security_gate_scores.json`, and Gate 4 reads `ai_gate_scores.json`. Without this, the security run would replace the Gate 2 scores before the regression gate could compare them.
+- **A score file per gate.** Every pytest run saves its average scores (section 4.7). The file name comes from the environment variable `RUN_SCORES_FILE` (default `run_scores.json`). Gate 2 writes `ai_gate_scores.json`, Gate 3 writes `security_gate_scores.json`, and Gate 5 reads `ai_gate_scores.json`. Without this, the security run would replace the Gate 2 scores before the regression gate could compare them.
 - **A judge-key check before Gate 2.** If `ANTHROPIC_API_KEY` is missing, `judge_llm()` skips every judge test. A gate with only skipped tests would look green while checking nothing, so the pipeline fails with a clear message first.
+- **The concurrent-users test is not in the performance gate yet.** `tests/PERFORMANCE/test_concurrent_users.py` fails today on a known ShopBot defect (section 11.1), which would keep the gate red on every run. It is run by hand and joins the gate when the defect is fixed.
 - **Fail fast.** Each step runs only if the one before it succeeded. The two publish steps use `condition: always()`.
 
 **Things to know**
 
-- The pipeline runs on a **self-hosted agent** (the developer's own machine, pool `Default`), because it deploys ShopBot into the local Docker.
+- Both pipelines are written for a **self-hosted agent** (the developer's own machine, pool `Default`), because it deploys ShopBot into the local Docker.
 - The judge key is a secret pipeline variable, not a value in the file.
-- **Judge cost:** a push to `main` costs no judge calls. A manual run costs 18 judge-scored tests (6 in Gate 2, 12 in Gate 3).
-- **The baseline for Gate 4 is measured and strict.** `baseline/baseline.json` holds Answer Relevancy 1.0 and Faithfulness 1.0, each from three cases in a run on 2026-10-10 (prompt `v2.2`, judge `claude-sonnet-5-5`, dataset 1.2). Gate 4 therefore fails when either average is below 0.9. With only three questions per metric, one weak answer can cause that.
+- **Judge cost:** a push to `main` costs no judge calls. A pull-request run or a manual run costs 18 judge-scored tests (6 in Gate 2, 12 in Gate 3), and every new push to an open PR starts a new run. Keep a PR as a draft while you are still working: draft PRs do not start the pipeline.
+- **The baseline for Gate 5 is measured and strict.** `baseline/baseline.json` holds Answer Relevancy 1.0 and Faithfulness 1.0, each from three cases in a run on 2026-10-10 (prompt `v2.2`, judge `claude-sonnet-5-5`, dataset 1.2). Gate 5 therefore fails when either average is below 0.9. With only three questions per metric, one weak answer can cause that.
 - **Provisional baselines.** A baseline entry can be an estimate, marked `"provisional": true`, to cover a metric before it has been measured; the comparison prints a note for such an entry. None exists now.
-- **The gates detect, they do not block a merge.** The pipeline starts after the code is already on `main`, and Gates 2 to 4 only run when someone starts them. Blocking a merge needs a pull-request trigger and a branch policy.
+- **The pipeline alone does not block a merge.** It reports red or green on the pull request. The block comes from the branch protection rule on GitHub (section 9.4), which is an account setting and is not in this repository.
 - **A known ShopBot defect can turn a gate red** (see section 11). That is the gate working.
-- The full evaluation step (all `evaluation`, `agentic` and `performance` tests plus step efficiency) is still in the file but runs only on a schedule, and **no schedule is configured**.
+- The full evaluation step (all `evaluation`, `agentic` and `performance` tests plus step efficiency) is in both files but runs only on a schedule, and **no schedule is configured**.
 - The other jobs in section 8 (online evaluation, judge calibration, dataset tools, red teaming) are not part of the pipeline. They are run by hand.
-- All four gates passed once on 2026-10-10 when their commands were run locally (1, 6 and 12 tests, then the comparison). The pipeline itself has not yet been run in Azure DevOps with all four gates.
+- All five gates have passed once when their commands were run locally on 2026-10-10 (1, 6, 12 and 9 tests, plus the baseline comparison). In the performance run, four of the five timed answers took under 2 seconds and one took 22.65 seconds, so the p95 was 22.65 seconds against the 30-second limit: a pass, but close enough that this gate can fail on a slow run. The pipeline itself has not yet been run in Azure DevOps.
+
+### 9.4 The locked door: blocking a merge into `main`
+
+A gate that only reports is a smoke alarm. A gate that stops the merge is a locked door. The standard design needs two parts, and both must be in place.
+
+```mermaid
+flowchart TD
+    A["Work on a branch"] --> B["Open a pull request into main"]
+    B --> C["Azure Pipelines runs the five gates on the PR"]
+    C --> D{"All five gates green?"}
+    D -- "no" --> E["GitHub disables the Merge button"]
+    E --> F["Fix the problem and push to the branch"]
+    F --> C
+    D -- "yes" --> G["Merge button is enabled"]
+    G --> H["Merge: the code reaches main"]
+    H --> I["Push to main runs Gate 1 as a last check"]
+```
+
+In words: nobody pushes to `main` directly. A change arrives as a pull request, the gates run on it, and GitHub only allows the merge when the pipeline is green.
+
+| Part | Where it lives | Status |
+|---|---|---|
+| 1. The pipeline runs on pull requests | The `pr:` block in `azure-pipelines.quality-gates.yml` | Written, not connected |
+| 2. `main` refuses a merge without a green pipeline | A branch protection rule on GitHub | A setting the repository owner switches on by hand |
+
+**Checklist to switch the lock on** (done once, by the repository owner):
+
+1. **Connect the pipeline.** In Azure DevOps, create a new pipeline from the GitHub repository and choose the existing file `azure-pipelines.quality-gates.yml`, and add the secret variable `ANTHROPIC_API_KEY`. The self-hosted agent in pool `Default` must be running.
+2. **Run it once** so that GitHub learns the name of the pipeline's status check.
+3. **Do not build pull requests from forks.** In the pipeline's settings (Triggers > Pull request validation), switch off building PRs from forks. The repository is public and the agent is your own PC: a pull request from a stranger's fork would otherwise run their code on your machine.
+4. **Protect `main` on GitHub** (Settings > Branches > Add a branch protection rule, or a ruleset, for `main`):
+   - Require a pull request before merging.
+   - Require status checks to pass before merging, and select the Azure Pipelines check.
+   - Do not allow bypassing the rule, so it also applies to administrators.
+5. **Prove it.** Open a PR that breaks a gate on purpose (for example, raise `metrics.faithfulness` in `thresholds.yaml` to 1.01) and confirm the Merge button is disabled. Then close that PR.
+
+After this, the day-to-day flow changes: a direct `git push` to `main` is rejected. Every change goes branch, pull request, green gates, merge.
+
+**How to explain this in an interview**
+
+What the design is:
+
+> "I designed the CI/CD as five quality gates that run on every pull request, in a fixed order with the free smoke check first: smoke, AI evaluation, security, performance and regression. Each gate is one pipeline step with one rule, and the rules are numbers in a YAML file, not in the pipeline. A failed gate stops the run, so a broken chatbot never spends judge calls. Branch protection requires the pipeline to be green, so a change that lowers quality, leaks data, slows the chatbot down or regresses against the baseline cannot be merged."
+
+Points worth adding when asked for detail:
+
+- Why the order: smoke is free and fast, the judge gates cost money, so failing early saves cost.
+- Why security is a separate gate: a leak must fail the build on its own and never be averaged into a quality score.
+- Why performance uses p95 and not the average, and why the concurrent-users test is kept out of the gate until its known defect is fixed (a gate that is always red gets ignored).
+- Why regression as well as a pass mark: a drop from 1.0 to 0.8 still passes a 0.7 pass mark, and only the baseline comparison catches it.
+- Why draft pull requests do not trigger it, and why the full suite is scheduled and not per PR: judge cost.
+- The fork risk on a self-hosted agent, and switching off fork builds.
+
+The honest status, if asked "is this running?":
+
+> "The pipeline file is written and its gates passed when I ran the same commands locally. I have not connected it in Azure DevOps yet, because the judge key has a limited budget. What runs today on every push is the deploy and smoke test. Connecting the gate pipeline and switching on branch protection is the last step."
 
 ---
 
@@ -894,8 +986,9 @@ State these honestly when describing the framework.
 | Traces come from a local ShopBot | Online evaluation has only run against traces from the developer's machine, not real production traffic | Point it at a deployed ShopBot's LangSmith project |
 | Red teaming is minimal | One weakness, one generation call, no multi-turn or adaptive attacks | A dedicated tool such as DeepTeam in a Python 3.12 environment |
 | No parallel runs | Scores and the "seen" prompt version are module-level variables, which would break under parallel test workers | Move that state into pytest fixtures or files |
-| Only part of the suite is in CI | Only the smoke gate runs automatically. The AI evaluation, security and regression gates (6 + 12 judge tests) need a manual pipeline run. The other tests and the jobs in section 8 are run by hand | Schedule the full suite when the judge budget allows |
-| The CI gates do not block a merge | The pipeline runs after a push to `main`, and the gates have not been run in Azure DevOps yet | Add a pull-request trigger and a branch policy |
+| CI runs only the smoke test | The active pipeline runs one smoke test on a push to `main`. Every other test and the jobs in section 8 are run by hand | Connect the quality-gates pipeline, and schedule the full suite, when the judge budget allows |
+| The quality gates do not block anything yet | The five-gate, pull-request pipeline is in `azure-pipelines.quality-gates.yml` but is not connected in Azure DevOps, and `main` has no branch protection rule. Its gate commands passed once when run locally; the pipeline itself has never run | Complete the checklist in section 9.4 and confirm one red PR cannot be merged |
+| ShopBot changes do not trigger the gates | The pipeline belongs to the test framework repository. A prompt or code change in ShopBot's repository does not start it | Trigger the gates from ShopBot's repository on its pull requests |
 | No retry for infrastructure errors | A ShopBot timeout fails the test like a quality failure does | Rerun only on infrastructure errors |
 | No `xfail` markers | Known ShopBot defects show as plain failures | Mark known defects as expected failures with a reason |
 | `judge_llm()` lives in `chatbot_metrics.py` | Every other metric file imports it from there | Move it to its own module |
@@ -985,7 +1078,8 @@ Ecomchatboattestautomation/
 ├── pytest.ini                      pytest settings, reports, markers
 ├── requirements.txt                pytest, httpx, python-dotenv, deepeval, anthropic, pytest-html, pyyaml, langsmith
 ├── .env.example                    the keys to put in .env (no values)
-├── azure-pipelines.yml             CI pipeline
+├── azure-pipelines.yml             the ACTIVE CI pipeline: deploy + smoke test on a push to main
+├── azure-pipelines.quality-gates.yml   the DESIGNED pipeline: five gates that block a PR (not connected)
 ├── framework/
 │   ├── utils/config.py             .env, thresholds, dataset version, load_test_data
 │   ├── clients/shopbot_client.py   send_message, login, retrieve, nlu
