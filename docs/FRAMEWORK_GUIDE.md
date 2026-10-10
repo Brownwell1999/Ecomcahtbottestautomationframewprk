@@ -763,6 +763,8 @@ The `reports/` folder is ignored by git.
 
 ### 9.3 CI: two pipeline files
 
+The wider picture (who pushes and merges, the two repositories, and how a change moves through DEV, QA and PROD) is in [CICD_ARCHITECTURE.md](CICD_ARCHITECTURE.md).
+
 There are two pipeline files in the repository. Only one of them runs.
 
 | File | Status | What it does |

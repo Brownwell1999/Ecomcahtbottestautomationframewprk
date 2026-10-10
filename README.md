@@ -90,6 +90,7 @@ A gate that fails turns the pipeline red and the later gates do not run.
   checklist in section 9.4 of the guide (branch protection on GitHub is what blocks the merge).
 
 More detail and flow charts: sections 9.3 and 9.4 of [docs/FRAMEWORK_GUIDE.md](docs/FRAMEWORK_GUIDE.md).
+The CI/CD architecture (roles, pull requests, DEV, QA and PROD): [docs/CICD_ARCHITECTURE.md](docs/CICD_ARCHITECTURE.md).
 
 ## Online evaluation (scoring real conversations)
 
